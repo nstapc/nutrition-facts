@@ -44,18 +44,30 @@ mv nf ~/.local/bin/nf
 ## Usage
 
 ```bash
-# Single food
+# Single food (assumes 100g)
 nf apple
 
-# Multiple foods (shows totals)
+# Multiple foods (shows totals, assumes 100g each)
 nf chicken breast rice broccoli
 
 # Foods with spaces (use quotes)
 nf "sweet potato" "peanut butter"
 
+# Foods with quantities and units
+nf 1 lb ground beef, 1 gal milk, 500 eggs
+
+# Mixed formats
+nf apple, 200g chicken breast, 1 cup rice
+
 # View help
 nf --help
 ```
+
+### Supported Units
+
+- **Weight**: g, lb, oz, kg
+- **Volume**: cup, tbsp, tsp, ml, l, gal, qt, pt, fl_oz
+- **Special**: egg, eggs (50g each)
 
 ### Example Output
 
@@ -65,6 +77,12 @@ Apples, raw, with skin (Includes foods for USDA's Food Distribution Program): 0g
 Bananas, raw: 1g protein, 23g carbs, 0g fat
 ---
 Total: 1g protein, 37g carbs, 0g fat
+
+$ nf 1 lb ground beef, 500 eggs
+1 lb Beef, ground, 80% lean meat / 20% fat, patty, cooked, broiled: 130g protein, 0g carbs, 67g fat
+500 eggs Eggs, Grade A, Large, egg whole: 325g protein, 25g carbs, 350g fat
+---
+Total: 455g protein, 25g carbs, 417g fat
 ```
 
 ## Configuration

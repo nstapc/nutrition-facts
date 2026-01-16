@@ -58,12 +58,12 @@ function httpsGet(url) {
   });
 }
 
-async function getNutritionData(foodItem, apiKey) {
+async function getNutritionData(foodItem, apiKey, multiplier = 1) {
   const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(foodItem)}&pageSize=1`;
-  
+
   try {
     const data = await httpsGet(url);
-    
+
     if (!data.foods || data.foods.length === 0) {
       return null;
     }
@@ -89,9 +89,9 @@ async function getNutritionData(foodItem, apiKey) {
 
     return {
       name: food.description || foodItem,
-      protein: Math.round(protein),
-      carbs: Math.round(carbs),
-      fat: Math.round(fat)
+      protein: Math.round(protein * multiplier),
+      carbs: Math.round(carbs * multiplier),
+      fat: Math.round(fat * multiplier)
     };
   } catch (err) {
     throw new Error(`Failed to fetch data: ${err.message}`);
@@ -103,14 +103,22 @@ function showHelp() {
 ${colors.cyan}nf - Nutrition Facts CLI Tool${colors.reset}
 
 ${colors.green}USAGE:${colors.reset}
-  nf <food_item> [food_item2] [food_item3] ...
+  nf <quantity> <unit> <food_item>[, <quantity> <unit> <food_item2>, ...]
+  nf <food_item> [food_item2] [food_item3] ...  (assumes 100g each)
   nf --setup <api_key>
   nf --help
 
 ${colors.green}EXAMPLES:${colors.reset}
   nf apple
   nf "chicken breast" rice broccoli
+  nf 1 lb ground beef, 1 gal milk, 500 eggs
+  nf 200g chicken breast, 1 cup rice
   nf --setup YOUR_API_KEY_HERE
+
+${colors.green}UNITS:${colors.reset}
+  Weight: g, lb, oz, kg
+  Volume: cup, tbsp, tsp, ml, l, gal, qt, pt, fl_oz
+  Special: egg, eggs (50g each)
 
 ${colors.green}SETUP:${colors.reset}
   1. Get a free API key from: https://fdc.nal.usda.gov/api-key-signup.html
@@ -119,6 +127,87 @@ ${colors.green}SETUP:${colors.reset}
 
 ${colors.dim}Your API key is stored in: ${CONFIG_FILE}${colors.reset}
 `);
+}
+
+// Unit conversions to grams
+const unitConversions = {
+  g: 1,
+  gram: 1,
+  grams: 1,
+  kg: 1000,
+  kilogram: 1000,
+  kilograms: 1000,
+  lb: 453.592,
+  lbs: 453.592,
+  pound: 453.592,
+  pounds: 453.592,
+  oz: 28.3495,
+  ounce: 28.3495,
+  ounces: 28.3495,
+  // Special cases
+  egg: 50, // approximate average egg weight
+  eggs: 50,
+  // Volume conversions (approximate, assuming water density)
+  cup: 240, // 240g for water
+  cups: 240,
+  tbsp: 15,
+  tablespoon: 15,
+  tablespoons: 15,
+  tsp: 5,
+  teaspoon: 5,
+  teaspoons: 5,
+  ml: 1,
+  milliliter: 1,
+  milliliters: 1,
+  l: 1000,
+  liter: 1000,
+  liters: 1000,
+  gal: 3785.41,
+  gallon: 3785.41,
+  gallons: 3785.41,
+  qt: 946.353,
+  quart: 946.353,
+  quarts: 946.353,
+  pt: 473.176,
+  pint: 473.176,
+  pints: 473.176,
+  fl_oz: 29.5735,
+  fluid_ounce: 29.5735,
+  fluid_ounces: 29.5735,
+};
+
+function parseFoodItem(item) {
+  const trimmed = item.trim();
+  // Match number followed by the rest
+  const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
+  if (!match) {
+    // No quantity, assume 100g
+    return { quantity: 100, unit: 'g', food: trimmed };
+  }
+  const [, qtyStr, rest] = match;
+  const quantity = parseFloat(qtyStr);
+  const restParts = rest.trim().split(/\s+/);
+  const firstWord = restParts[0].toLowerCase();
+  let unit = 'g';
+  let food = rest;
+  if (unitConversions.hasOwnProperty(firstWord)) {
+    // First word is a unit
+    unit = firstWord;
+    food = restParts.slice(1).join(' ');
+    if (!food.trim()) {
+      // If no food after unit, assume unit is the food (e.g., 500 eggs)
+      food = firstWord;
+    }
+  }
+  return { quantity, unit, food: food.trim() };
+}
+
+function getGrams(quantity, unit) {
+  const conversion = unitConversions[unit];
+  if (!conversion) {
+    throw new Error(`Unknown unit: ${unit}`);
+  }
+  return quantity * conversion;
 }
 
 async function main() {
@@ -147,32 +236,39 @@ async function main() {
     process.exit(1);
   }
 
-  const foods = args;
+  // Join all args and split on comma to handle multiple items
+  const input = args.join(' ');
+  const foodItems = input.split(',').map(s => s.trim()).filter(s => s);
+
   const results = [];
   let totalProtein = 0;
   let totalCarbs = 0;
   let totalFat = 0;
 
-  for (const food of foods) {
+  for (const item of foodItems) {
     try {
-      const result = await getNutritionData(food, config.apiKey);
+      const { quantity, unit, food } = parseFoodItem(item);
+      const grams = getGrams(quantity, unit);
+      const multiplier = grams / 100;
+      const result = await getNutritionData(food, config.apiKey, multiplier);
       if (result) {
         results.push(result);
         totalProtein += result.protein;
         totalCarbs += result.carbs;
         totalFat += result.fat;
-        console.log(`${colors.green}${result.name}:${colors.reset} ${result.protein}g protein, ${result.carbs}g carbs, ${result.fat}g fat`);
+        const qtyStr = quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(2);
+        console.log(`${colors.green}${qtyStr} ${unit} ${result.name}:${colors.reset} ${result.protein}g protein, ${result.carbs}g carbs, ${result.fat}g fat`);
       } else {
-        console.log(`${colors.red}${food}: Not found${colors.reset}`);
+        console.log(`${colors.red}${item}: Not found${colors.reset}`);
       }
     } catch (err) {
-      console.error(`${colors.red}${food}: ${err.message}${colors.reset}`);
+      console.error(`${colors.red}${item}: ${err.message}${colors.reset}`);
     }
   }
 
   if (results.length > 1) {
     console.log(`${colors.dim}---${colors.reset}`);
-    console.log(`${colors.yellow}Total: ${totalProtein}g protein, ${totalCarbs}g carbs, ${totalFat}g fat${colors.reset}`);
+    console.log(`${colors.yellow}Total: ${Math.round(totalProtein)}g protein, ${Math.round(totalCarbs)}g carbs, ${Math.round(totalFat)}g fat${colors.reset}`);
   }
 }
 
