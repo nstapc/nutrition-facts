@@ -143,6 +143,17 @@ ${colors.green}EXAMPLES:${colors.reset}
   nf 200g chicken breast, 1 cup rice
   nf --setup YOUR_API_KEY_HERE
 
+${colors.green}EXAMPLE OUTPUT:${colors.reset}
+  $ nf apple
+  1 apple Apples, raw, with skin: 52 calories, 0g protein, 14g carbs, 0g fat
+
+  $ nf chicken breast, rice, broccoli
+  1 chicken breast Chicken Breast: 165 calories, 31g protein, 0g carbs, 3.6g fat
+  1 rice Rice: 130 calories, 2.7g protein, 28g carbs, 0.3g fat
+  1 broccoli Broccoli: 55 calories, 3.7g protein, 11g carbs, 0.6g fat
+  ---
+  Total: 350 calories, 37.4g protein, 39g carbs, 4.5g fat
+
 ${colors.green}UNITS:${colors.reset}
   Weight: g, lb, oz, kg
   Volume: cup, tbsp, tsp, ml, l, gal, qt, pt, fl_oz
