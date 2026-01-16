@@ -58,7 +58,7 @@ function httpsGet(url) {
   });
 }
 
-async function getNutritionData(foodItem, apiKey, multiplier = 1) {
+async function getNutritionData(foodItem, apiKey, quantity, unit) {
   const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${encodeURIComponent(apiKey)}&query=${encodeURIComponent(foodItem)}&pageSize=1`;
 
   try {
@@ -69,12 +69,16 @@ async function getNutritionData(foodItem, apiKey, multiplier = 1) {
     }
 
     const food = data.foods[0];
+    let calories = 0;
     let protein = 0;
     let carbs = 0;
     let fat = 0;
 
     if (food.foodNutrients) {
       food.foodNutrients.forEach(nutrient => {
+        if (nutrient.nutrientId === 1008 || nutrient.nutrientName === 'Energy') {
+          calories = nutrient.value || 0;
+        }
         if (nutrient.nutrientId === 1003 || nutrient.nutrientName === 'Protein') {
           protein = nutrient.value || 0;
         }
@@ -87,8 +91,32 @@ async function getNutritionData(foodItem, apiKey, multiplier = 1) {
       });
     }
 
+    // Calculate grams
+    let grams;
+    if (unitConversions[unit]) {
+      grams = quantity * unitConversions[unit];
+    } else {
+      // Assume it's a serving, look for portion
+      let portionWeight = null;
+      if (food.foodPortions) {
+        // Find portion that matches '1 ' + unit or unit
+        const portion = food.foodPortions.find(p => p.portionDescription && (p.portionDescription.toLowerCase().includes('1 ' + unit.toLowerCase()) || p.portionDescription.toLowerCase() === unit.toLowerCase()));
+        if (portion) {
+          portionWeight = portion.gramWeight;
+        }
+      }
+      if (portionWeight !== null) {
+        grams = quantity * portionWeight;
+      } else {
+        // Fallback to 100g per serving
+        grams = quantity * 100;
+      }
+    }
+    const multiplier = grams / 100;
+
     return {
       name: food.description || foodItem,
+      calories: Math.round(calories * multiplier),
       protein: Math.round(protein * multiplier),
       carbs: Math.round(carbs * multiplier),
       fat: Math.round(fat * multiplier)
@@ -104,7 +132,7 @@ ${colors.cyan}nf - Nutrition Facts CLI Tool${colors.reset}
 
 ${colors.green}USAGE:${colors.reset}
   nf <quantity> <unit> <food_item>[, <quantity> <unit> <food_item2>, ...]
-  nf <food_item> [food_item2] [food_item3] ...  (assumes 100g each)
+  nf <food_item> [food_item2] [food_item3] ...  (assumes 1 serving each)
   nf --setup <api_key>
   nf --help
 
@@ -181,8 +209,8 @@ function parseFoodItem(item) {
   // Match number followed by the rest
   const match = trimmed.match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
   if (!match) {
-    // No quantity, assume 100g
-    return { quantity: 100, unit: 'g', food: trimmed };
+    // No quantity, assume 1 serving
+    return { quantity: 1, unit: trimmed, food: trimmed };
   }
   const [, qtyStr, rest] = match;
   const quantity = parseFloat(qtyStr);
@@ -241,6 +269,7 @@ async function main() {
   const foodItems = input.split(',').map(s => s.trim()).filter(s => s);
 
   const results = [];
+  let totalCalories = 0;
   let totalProtein = 0;
   let totalCarbs = 0;
   let totalFat = 0;
@@ -248,16 +277,15 @@ async function main() {
   for (const item of foodItems) {
     try {
       const { quantity, unit, food } = parseFoodItem(item);
-      const grams = getGrams(quantity, unit);
-      const multiplier = grams / 100;
-      const result = await getNutritionData(food, config.apiKey, multiplier);
+      const result = await getNutritionData(food, config.apiKey, quantity, unit);
       if (result) {
         results.push(result);
+        totalCalories += result.calories;
         totalProtein += result.protein;
         totalCarbs += result.carbs;
         totalFat += result.fat;
         const qtyStr = quantity % 1 === 0 ? quantity.toString() : quantity.toFixed(2);
-        console.log(`${colors.green}${qtyStr} ${unit} ${result.name}:${colors.reset} ${result.protein}g protein, ${result.carbs}g carbs, ${result.fat}g fat`);
+        console.log(`${colors.green}${qtyStr} ${unit} ${result.name}:${colors.reset} ${result.calories} calories, ${result.protein}g protein, ${result.carbs}g carbs, ${result.fat}g fat`);
       } else {
         console.log(`${colors.red}${item}: Not found${colors.reset}`);
       }
@@ -268,7 +296,7 @@ async function main() {
 
   if (results.length > 1) {
     console.log(`${colors.dim}---${colors.reset}`);
-    console.log(`${colors.yellow}Total: ${Math.round(totalProtein)}g protein, ${Math.round(totalCarbs)}g carbs, ${Math.round(totalFat)}g fat${colors.reset}`);
+    console.log(`${colors.yellow}Total: ${Math.round(totalCalories)} calories, ${Math.round(totalProtein)}g protein, ${Math.round(totalCarbs)}g carbs, ${Math.round(totalFat)}g fat${colors.reset}`);
   }
 }
 

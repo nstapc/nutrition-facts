@@ -44,10 +44,10 @@ mv nf ~/.local/bin/nf
 ## Usage
 
 ```bash
-# Single food (assumes 100g)
+# Single food (assumes 1 serving)
 nf apple
 
-# Multiple foods (shows totals, assumes 100g each)
+# Multiple foods (shows totals, assumes 1 serving each)
 nf chicken breast rice broccoli
 
 # Foods with spaces (use quotes)
@@ -73,16 +73,16 @@ nf --help
 
 ```
 $ nf apple banana
-Apples, raw, with skin (Includes foods for USDA's Food Distribution Program): 0g protein, 14g carbs, 0g fat
-Bananas, raw: 1g protein, 23g carbs, 0g fat
+Apples, raw, with skin (Includes foods for USDA's Food Distribution Program): 52 calories, 0g protein, 14g carbs, 0g fat
+Bananas, raw: 89 calories, 1g protein, 23g carbs, 0g fat
 ---
-Total: 1g protein, 37g carbs, 0g fat
+Total: 141 calories, 1g protein, 37g carbs, 0g fat
 
 $ nf 1 lb ground beef, 500 eggs
-1 lb Beef, ground, 80% lean meat / 20% fat, patty, cooked, broiled: 130g protein, 0g carbs, 67g fat
-500 eggs Eggs, Grade A, Large, egg whole: 325g protein, 25g carbs, 350g fat
+1 lb Beef, ground, 80% lean meat / 20% fat, patty, cooked, broiled: 1120 calories, 130g protein, 0g carbs, 67g fat
+500 eggs Eggs, Grade A, Large, egg whole: 3575 calories, 325g protein, 25g carbs, 350g fat
 ---
-Total: 455g protein, 25g carbs, 417g fat
+Total: 4695 calories, 455g protein, 25g carbs, 417g fat
 ```
 
 ## Configuration
