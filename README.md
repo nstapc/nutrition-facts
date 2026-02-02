@@ -26,12 +26,11 @@ mkdir -p ~/.local/bin
 mv nf ~/.local/bin/nf
 ```
 
-### Get Your Free API Key
+### USDA FoodData Central API Key
 
-1. Visit [USDA FoodData Central API signup](https://fdc.nal.usda.gov/api-key-signup.html)
-2. Fill out the form (name, email, organization)
-3. Copy your API key
-4. Configure nf: `nf --setup YOUR_API_KEY_HERE`
+1. Request an API key here: https://fdc.nal.usda.gov/api-key-signup.html
+2. Copy your API key from an email from noreply@api.data.gov titled "Your API key"
+3. Configure nf: `nf --setup YOUR_API_KEY_HERE`
 
 ## Usage
 
